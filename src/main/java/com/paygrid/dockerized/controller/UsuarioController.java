@@ -1,72 +1,56 @@
 package com.paygrid.dockerized.controller;
 
+import jakarta.servlet.http.HttpSession;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.validation.Valid;
-
-import com.paygrid.dockerized.model.dto.LoginRequestDTO;
-import com.paygrid.dockerized.model.dto.UsuarioRegistroRequestDTO;
+import com.paygrid.dockerized.model.dto.UsuarioRequestDTO;
 import com.paygrid.dockerized.model.dto.UsuarioResponseDTO;
+import com.paygrid.dockerized.model.dto.LoginRequestDTO;
+import com.paygrid.dockerized.model.dto.LoginResponseDTO;
 import com.paygrid.dockerized.model.entity.Usuario;
 import com.paygrid.dockerized.service.UsuarioService;
-import com.paygrid.dockerized.mapper.UsuarioMapper;
-
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 
 @RestController
-@RequestMapping("/api/v1/usuarios")
+@RequestMapping("/usuarios")
+@RequiredArgsConstructor
 public class UsuarioController {
+
     private final UsuarioService usuarioService;
-    private final UsuarioMapper usuarioMapper;
-    private final AuthenticationManager authenticationManager;
+    private final PasswordEncoder passwordEncoder;
+    private final HttpSession httpSession;
 
-    public UsuarioController(UsuarioService usuarioService, UsuarioMapper usuarioMapper, AuthenticationManager authenticationManager) {
-        this.usuarioService = usuarioService;
-        this.usuarioMapper = usuarioMapper;
-        this.authenticationManager = authenticationManager;
-    }
-
-    @PostMapping("/register")
-    public ResponseEntity<UsuarioResponseDTO> registrarUsuario(@Valid @RequestBody UsuarioRegistroRequestDTO usuarioRegistroRequestDTO) {
-        UsuarioResponseDTO usuarioResponseDTO = usuarioService.registrarUsuario(usuarioRegistroRequestDTO);
+    @PostMapping("/registro")
+    public ResponseEntity<UsuarioResponseDTO> registrarUsuario(@Valid @RequestBody UsuarioRequestDTO usuarioRequestDTO) {
+        UsuarioResponseDTO usuarioResponseDTO = usuarioService.registrarUsuario(usuarioRequestDTO);
+        httpSession.setAttribute("usuario", usuarioResponseDTO);
         return new ResponseEntity<>(usuarioResponseDTO, HttpStatus.CREATED);
     }
 
     @PostMapping("/login")
-    public ResponseEntity<UsuarioResponseDTO> autenticarUsuario(@Valid @RequestBody LoginRequestDTO loginRequestDTO, HttpServletRequest request, HttpServletResponse response) {
-        try {
-            Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginRequestDTO.getCorreo(), loginRequestDTO.getContraseña())
-            );
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-            
-            Usuario usuario = usuarioService.findByCorreo(loginRequestDTO.getCorreo());
-            UsuarioResponseDTO usuarioResponseDTO = usuarioMapper.toResponseDTO(usuario);
-            
-            request.getSession(true);
-            
-            return new ResponseEntity<>(usuarioResponseDTO, HttpStatus.OK);
-        } catch (Exception e) {
+    public ResponseEntity<LoginResponseDTO> loginUsuario(@Valid @RequestBody LoginRequestDTO loginRequestDTO) {
+        Usuario usuario = usuarioService.obtenerUsuarioEntidadPorEmail(loginRequestDTO.getEmail());
+        if (usuario != null && passwordEncoder.matches(loginRequestDTO.getPassword(), usuario.getPassword())) {
+            LoginResponseDTO loginResponseDTO = new LoginResponseDTO(usuario.getEmail(), usuario.getUsername());
+            httpSession.setAttribute("usuario", loginResponseDTO);
+            return new ResponseEntity<>(loginResponseDTO, HttpStatus.OK);
+        } else {
             return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
         }
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<String> cerrarSesion(HttpServletRequest request) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
-            return new ResponseEntity<>("No hay sesión activa", HttpStatus.UNAUTHORIZED);
+    public ResponseEntity<String> logoutUsuario() {
+        LoginResponseDTO loginResponseDTO = (LoginResponseDTO) httpSession.getAttribute("usuario");
+        if (loginResponseDTO != null) {
+            httpSession.invalidate();
+            return new ResponseEntity<>("Has cerrado sesión exitosamente.", HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>("No hay una sesión activa.", HttpStatus.BAD_REQUEST);
         }
-        
-        SecurityContextHolder.clearContext();
-        request.getSession().invalidate();
-        return new ResponseEntity<>("Sesión cerrada exitosamente", HttpStatus.OK);
     }
 }
