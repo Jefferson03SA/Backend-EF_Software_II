@@ -1,6 +1,6 @@
 package com.paygrid.dockerized.service;
 
-import java.util.ArrayList;
+import java.util.Collections;
 
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -46,10 +46,10 @@ public class UsuarioService implements UserDetailsService {
 
     public Usuario autenticarUsuario(LoginRequestDTO loginRequestDTO) {
         Usuario usuario = usuarioRepository.findByCorreo(loginRequestDTO.getCorreo())
-                .orElseThrow(() -> new RuntimeException("Correo o contraseña incorrectos"));
+                .orElseThrow(() -> new UsernameNotFoundException("Correo o contraseña incorrectos"));
 
         if (!passwordEncoder.matches(loginRequestDTO.getContraseña(), usuario.getContraseña())) {
-            throw new RuntimeException("Correo o contraseña incorrectos");
+            throw new UsernameNotFoundException("Correo o contraseña incorrectos");
         }
 
         return usuario;
@@ -59,6 +59,16 @@ public class UsuarioService implements UserDetailsService {
     public UserDetails loadUserByUsername(String correo) throws UsernameNotFoundException {
         Usuario usuario = usuarioRepository.findByCorreo(correo)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado con correo: " + correo));
-        return new org.springframework.security.core.userdetails.User(usuario.getCorreo(), usuario.getContraseña(), new ArrayList<>());
+        
+        return new org.springframework.security.core.userdetails.User(
+            usuario.getCorreo(), 
+            usuario.getContraseña(), 
+            Collections.emptyList() 
+        );
+    }
+
+    public Usuario findByCorreo(String correo) {
+        return usuarioRepository.findByCorreo(correo)
+                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado con correo: " + correo));
     }
 }
