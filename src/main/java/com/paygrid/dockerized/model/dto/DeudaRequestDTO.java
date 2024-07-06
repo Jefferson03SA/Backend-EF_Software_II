@@ -1,13 +1,15 @@
 package com.paygrid.dockerized.model.dto;
 
-import lombok.Data;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import lombok.Data;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Data
 public class DeudaRequestDTO {
+
     @NotBlank(message = "El número de documento es obligatorio.")
     private String numeroDocumento;
 
