@@ -1,5 +1,6 @@
 package com.paygrid.dockerized.service;
 
+import com.paygrid.dockerized.model.dto.CronogramaPagoDTO;
 import com.paygrid.dockerized.model.dto.DeudaResponseDTO;
 import com.paygrid.dockerized.model.entity.Usuario;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +26,34 @@ public class NotificacionService {
                 + "<li><strong>Empresa:</strong> " + deudaResponseDTO.getEmpresa() + "</li>"
                 + "<li><strong>Monto:</strong> " + deudaResponseDTO.getMonto() + "</li>"
                 + "<li><strong>Fecha de Vencimiento:</strong> " + deudaResponseDTO.getFechaVencimiento() + "</li>"
+                + "</ul>"
+                + "<p>Por favor, asegúrese de pagar a tiempo para evitar cargos adicionales.</p>"
+                + "<p>Saludos,<br>Su equipo de Gestión de Deudas</p>";
+
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, "utf-8");
+
+            helper.setFrom("proyect2024up@gmail.com");
+            helper.setTo(toAddress);
+            helper.setSubject(subject);
+            helper.setText(content, true); 
+
+            mailSender.send(message);
+
+        } catch (MessagingException e) {
+            throw new IllegalStateException("Error al enviar el correo electrónico", e);
+        }
+    }
+
+    public void enviarAlertaPrestamo(CronogramaPagoDTO cronogramaPagoDTO, Usuario usuario) {
+        String toAddress = usuario.getEmail();
+        String subject = "Alerta de Vencimiento de Cuota de Préstamo";
+        String content = "<p>Estimado " + usuario.getUsername() + ",</p>"
+                + "<p>La siguiente cuota de su préstamo está a punto de vencer hoy:</p>"
+                + "<ul>"
+                + "<li><strong>Fecha de Vencimiento:</strong> " + cronogramaPagoDTO.getFechaVencimiento() + "</li>"
+                + "<li><strong>Monto de la Cuota:</strong> " + cronogramaPagoDTO.getCuota() + "</li>"
                 + "</ul>"
                 + "<p>Por favor, asegúrese de pagar a tiempo para evitar cargos adicionales.</p>"
                 + "<p>Saludos,<br>Su equipo de Gestión de Deudas</p>";

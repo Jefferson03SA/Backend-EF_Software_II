@@ -37,9 +37,10 @@ public class DeudaController {
         deudaService.marcarComoPagada(deudaId, email);
     }
 
-    @GetMapping("/alertas")
+    @PostMapping("/alertas")
     public List<DeudaResponseDTO> alertarVencimientosHoy(Principal principal) {
         String email = principal.getName();
         return deudaService.alertarVencimientosHoy(email);
     }
+
 }
