@@ -14,6 +14,5 @@ public class PrestamoResponseDTO {
     private LocalDate fechaDesembolso;
     private Integer plazo;
     private String entidad;
-    private String usuario;
 }
 

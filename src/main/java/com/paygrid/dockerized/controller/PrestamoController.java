@@ -3,7 +3,7 @@ package com.paygrid.dockerized.controller;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import com.paygrid.dockerized.model.dto.CronogramaPagoDTO;
+import com.paygrid.dockerized.model.dto.PrestamoDetalleDTO;
 import com.paygrid.dockerized.model.dto.PrestamoRequestDTO;
 import com.paygrid.dockerized.model.dto.PrestamoResponseDTO;
 import com.paygrid.dockerized.service.PrestamoService;
@@ -32,14 +32,15 @@ public class PrestamoController {
     }
 
     @GetMapping("/{prestamoId}/cronograma")
-    public List<CronogramaPagoDTO> consultarCronograma(@PathVariable Long prestamoId) {
+    public PrestamoDetalleDTO consultarCronograma(@PathVariable Long prestamoId) {
         return prestamoService.consultarCronograma(prestamoId);
     }
 
-    @PatchMapping("/{prestamoId}/cronograma/{pagoId}/pagar")
-    public void marcarPagoComoRealizado(@PathVariable Long prestamoId, @PathVariable Long pagoId) {
-        prestamoService.marcarPagoComoRealizado(prestamoId, pagoId);
-    }
+    @PatchMapping("/{prestamoId}/cronograma/{numero}/pagar")
+public void marcarPagoComoRealizado(@PathVariable Long prestamoId, @PathVariable int numero) {
+    prestamoService.marcarPagoComoRealizado(prestamoId, numero);
+}
+
 
     @PostMapping("/enviar-notificaciones")
     public void enviarNotificaciones() {

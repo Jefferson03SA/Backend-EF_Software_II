@@ -1,6 +1,6 @@
 package com.paygrid.dockerized.service;
 
-import com.paygrid.dockerized.model.dto.CronogramaPagoDTO;
+import com.paygrid.dockerized.model.dto.CronogramaPagoEmailDTO;
 import com.paygrid.dockerized.model.dto.DeudaResponseDTO;
 import com.paygrid.dockerized.model.entity.Usuario;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,7 +37,7 @@ public class NotificacionService {
             helper.setFrom("proyect2024up@gmail.com");
             helper.setTo(toAddress);
             helper.setSubject(subject);
-            helper.setText(content, true); 
+            helper.setText(content, true);
 
             mailSender.send(message);
 
@@ -46,14 +46,16 @@ public class NotificacionService {
         }
     }
 
-    public void enviarAlertaPrestamo(CronogramaPagoDTO cronogramaPagoDTO, Usuario usuario) {
+    public void enviarAlertaPrestamo(CronogramaPagoEmailDTO cronogramaPagoEmailDTO, Usuario usuario) {
         String toAddress = usuario.getEmail();
         String subject = "Alerta de Vencimiento de Cuota de Préstamo";
         String content = "<p>Estimado " + usuario.getUsername() + ",</p>"
-                + "<p>La siguiente cuota de su préstamo está a punto de vencer hoy:</p>"
+                + "<p>La cuota número <strong>" + cronogramaPagoEmailDTO.getNumero()
+                + "</strong> de su préstamo a la entidad <strong>" + cronogramaPagoEmailDTO.getEntidad()
+                + "</strong> está a punto de vencer hoy:</p>"
                 + "<ul>"
-                + "<li><strong>Fecha de Vencimiento:</strong> " + cronogramaPagoDTO.getFechaVencimiento() + "</li>"
-                + "<li><strong>Monto de la Cuota:</strong> " + cronogramaPagoDTO.getCuota() + "</li>"
+                + "<li><strong>Fecha de Vencimiento:</strong> " + cronogramaPagoEmailDTO.getFechaVencimiento() + "</li>"
+                + "<li><strong>Monto de la Cuota:</strong> " + cronogramaPagoEmailDTO.getCuota() + "</li>"
                 + "</ul>"
                 + "<p>Por favor, asegúrese de pagar a tiempo para evitar cargos adicionales.</p>"
                 + "<p>Saludos,<br>Su equipo de Gestión de Deudas</p>";
@@ -65,7 +67,7 @@ public class NotificacionService {
             helper.setFrom("proyect2024up@gmail.com");
             helper.setTo(toAddress);
             helper.setSubject(subject);
-            helper.setText(content, true); 
+            helper.setText(content, true);
 
             mailSender.send(message);
 

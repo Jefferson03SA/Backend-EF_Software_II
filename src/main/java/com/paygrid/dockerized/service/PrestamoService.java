@@ -4,8 +4,10 @@ import com.paygrid.dockerized.mapper.PrestamoMapper;
 import com.paygrid.dockerized.mapper.CronogramaPagoMapper;
 import com.paygrid.dockerized.model.entity.Prestamo;
 import com.paygrid.dockerized.model.dto.CronogramaPagoDTO;
+import com.paygrid.dockerized.model.dto.CronogramaPagoEmailDTO;
 import com.paygrid.dockerized.model.dto.PrestamoRequestDTO;
 import com.paygrid.dockerized.model.dto.PrestamoResponseDTO;
+import com.paygrid.dockerized.model.dto.PrestamoDetalleDTO;
 import com.paygrid.dockerized.model.entity.CronogramaPago;
 import com.paygrid.dockerized.model.enums.Estado;
 import com.paygrid.dockerized.model.entity.Usuario;
@@ -56,6 +58,14 @@ public class PrestamoService {
 
         List<CronogramaPago> cronogramaPagos = generarCronograma(prestamo);
         cronogramaPagoRepository.saveAll(cronogramaPagos);
+
+        // Verificar si la primera cuota vence hoy
+        CronogramaPago primeraCuota = cronogramaPagos.get(1); // Cuota número 1
+        LocalDate hoy = LocalDate.now();
+        if (primeraCuota.getFechaVencimiento().isEqual(hoy)) {
+            CronogramaPagoEmailDTO cronogramaPagoEmailDTO = cronogramaPagoMapper.toEmailDTO(primeraCuota);
+            notificacionService.enviarAlertaPrestamo(cronogramaPagoEmailDTO, usuario);
+        }
 
         return prestamoMapper.toDTO(prestamo);
     }
@@ -122,22 +132,43 @@ public class PrestamoService {
                 .collect(Collectors.toList());
     }
 
-    public List<CronogramaPagoDTO> consultarCronograma(Long prestamoId) {
-        List<CronogramaPago> cronogramaPagos = cronogramaPagoRepository.findByPrestamoId(prestamoId);
-        return cronogramaPagos.stream()
-                .map(cronogramaPagoMapper::toDTO)
-                .collect(Collectors.toList());
-    }
+    // public PrestamoDetalleDTO consultarPrestamoDetalle(Long prestamoId) {
+    // Prestamo prestamo = prestamoRepository.findById(prestamoId)
+    // .orElseThrow(() -> new IllegalArgumentException("Préstamo no encontrado."));
+    // List<CronogramaPago> cronogramaPagos =
+    // cronogramaPagoRepository.findByPrestamoId(prestamoId);
+    // List<CronogramaPagoDTO> cronogramaDTOs = cronogramaPagos.stream()
+    // .map(cronogramaPagoMapper::toDTO)
+    // .collect(Collectors.toList());
+
+    // PrestamoDetalleDTO prestamoDetalleDTO = new PrestamoDetalleDTO();
+    // prestamoDetalleDTO.setPrestamo(prestamoMapper.toDTO(prestamo));
+    // prestamoDetalleDTO.setCronograma(cronogramaDTOs);
+
+    // return prestamoDetalleDTO;
+    // }
 
     @Transactional
-    public void marcarPagoComoRealizado(Long prestamoId, Long pagoId) {
-        CronogramaPago cronogramaPago = cronogramaPagoRepository.findById(pagoId)
-                .orElseThrow(() -> new IllegalArgumentException("Pago no encontrado."));
-        if (!cronogramaPago.getPrestamo().getId().equals(prestamoId)) {
-            throw new IllegalArgumentException("El pago no pertenece al préstamo especificado.");
-        }
+    public void marcarPagoComoRealizado(Long prestamoId, int numero) {
+        CronogramaPago cronogramaPago = cronogramaPagoRepository.findByPrestamoIdAndNumero(prestamoId, numero)
+                .orElseThrow(() -> new IllegalArgumentException("Pago no encontrado para el número especificado."));
+
         cronogramaPago.setEstado(Estado.PAGADO);
         cronogramaPagoRepository.save(cronogramaPago);
+    }
+
+    public PrestamoDetalleDTO consultarCronograma(Long prestamoId) {
+        Prestamo prestamo = prestamoRepository.findById(prestamoId)
+                .orElseThrow(() -> new IllegalArgumentException("Préstamo no encontrado."));
+        List<CronogramaPago> cronogramaPagos = cronogramaPagoRepository.findByPrestamoIdOrderByNumeroAsc(prestamoId);
+        List<CronogramaPagoDTO> cronogramaPagoDTOS = cronogramaPagos.stream()
+                .map(cronogramaPagoMapper::toDTO)
+                .collect(Collectors.toList());
+
+        PrestamoDetalleDTO prestamoDetalleDTO = new PrestamoDetalleDTO();
+        prestamoDetalleDTO.setPrestamo(prestamoMapper.toDTO(prestamo));
+        prestamoDetalleDTO.setCronograma(cronogramaPagoDTOS);
+        return prestamoDetalleDTO;
     }
 
     @Transactional
@@ -148,9 +179,24 @@ public class PrestamoService {
         for (CronogramaPago pago : pagosPendientes) {
             if (pago.getFechaVencimiento().isEqual(hoy)) {
                 Usuario usuario = pago.getPrestamo().getUsuario();
-                CronogramaPagoDTO cronogramaPagoDTO = cronogramaPagoMapper.toDTO(pago);
-                notificacionService.enviarAlertaPrestamo(cronogramaPagoDTO, usuario);
+                CronogramaPagoEmailDTO cronogramaPagoEmailDTO = cronogramaPagoMapper.toEmailDTO(pago);
+                notificacionService.enviarAlertaPrestamo(cronogramaPagoEmailDTO, usuario);
             }
         }
     }
+
+    @Transactional
+    public List<CronogramaPagoEmailDTO> alertarVencimientosHoy(String email) {
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado."));
+
+        LocalDate hoy = LocalDate.now();
+        List<CronogramaPago> pagos = cronogramaPagoRepository
+                .findByPrestamoUsuarioIdAndFechaVencimientoBetween(usuario.getId(), hoy, hoy);
+
+        return pagos.stream()
+                .map(cronogramaPagoMapper::toEmailDTO)
+                .collect(Collectors.toList());
+    }
+
 }

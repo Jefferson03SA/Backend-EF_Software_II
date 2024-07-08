@@ -14,93 +14,145 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
 public class DeudaService {
 
-    @Autowired
-    private DeudaRepository deudaRepository;
+        @Autowired
+        private DeudaRepository deudaRepository;
 
-    @Autowired
-    private UsuarioRepository usuarioRepository;
+        @Autowired
+        private UsuarioRepository usuarioRepository;
 
-    @Autowired
-    private DeudaMapper deudaMapper;
+        @Autowired
+        private DeudaMapper deudaMapper;
 
-    @Autowired
-    private NotificacionService notificacionService;
+        @Autowired
+        private NotificacionService notificacionService;
 
-    @Transactional
-    public DeudaResponseDTO registrarDeuda(DeudaRequestDTO deudaRequestDTO, String email) {
-        Usuario usuario = usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado."));
-        
-        if (deudaRepository.existsByNumeroDocumento(deudaRequestDTO.getNumeroDocumento())) {
-            throw new IllegalArgumentException("El número de documento ya existe.");
+        @Transactional
+        public DeudaResponseDTO registrarDeuda(DeudaRequestDTO deudaRequestDTO, String email) {
+                Usuario usuario = usuarioRepository.findByEmail(email)
+                                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado."));
+
+                if (deudaRepository.existsByNumeroDocumento(deudaRequestDTO.getNumeroDocumento())) {
+                        throw new IllegalArgumentException("El número de documento ya existe.");
+                }
+
+                Deuda deuda = deudaMapper.toEntity(deudaRequestDTO);
+                deuda.setUsuario(usuario);
+                deuda.setEstado(Estado.PENDIENTE);
+                deuda = deudaRepository.save(deuda);
+
+                // Enviar notificación si la deuda vence hoy
+                if (deuda.getFechaVencimiento().isEqual(LocalDate.now())) {
+                        notificacionService.enviarAlerta(deudaMapper.toDTO(deuda), usuario);
+                }
+
+                return deudaMapper.toDTO(deuda);
         }
 
-        Deuda deuda = deudaMapper.toEntity(deudaRequestDTO);
-        deuda.setUsuario(usuario);
-        deuda.setEstado(Estado.PENDIENTE);
-        deuda = deudaRepository.save(deuda);
+        public List<DeudaResponseDTO> consultarDeudasPorMes(String email, YearMonth mes) {
+                Usuario usuario = usuarioRepository.findByEmail(email)
+                                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado."));
 
-        return deudaMapper.toDTO(deuda);
-    }
+                LocalDate start = mes.atDay(1);
+                LocalDate end = mes.atEndOfMonth();
+                LocalDate now = LocalDate.now();
 
-    public List<DeudaResponseDTO> consultarDeudasPorMes(String email, YearMonth mes) {
-        Usuario usuario = usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado."));
-        
-        LocalDate start = mes.atDay(1);
-        LocalDate end = mes.atEndOfMonth();
+                // Obtener deudas pendientes no vencidas del mes seleccionado
+                List<Deuda> deudasPendientesNoVencidasDelMes = deudaRepository
+                                .findByUsuarioIdAndEstadoAndFechaVencimientoBetween(
+                                                usuario.getId(), Estado.PENDIENTE, start, end);
 
-        List<Deuda> deudas = deudaRepository.findByUsuarioIdAndFechaVencimientoBetween(usuario.getId(), start, end);
-        List<Deuda> deudasPendientes = deudaRepository.findByUsuarioIdAndEstado(usuario.getId(), Estado.PENDIENTE);
+                // Obtener todas las deudas pendientes vencidas hasta la fecha actual
+                List<Deuda> deudasPendientesVencidas = deudaRepository
+                                .findByUsuarioIdAndEstadoAndFechaVencimientoBefore(
+                                                usuario.getId(), Estado.PENDIENTE, now);
 
-        deudas.addAll(deudasPendientes.stream()
-                .filter(deuda -> deuda.getFechaVencimiento().isBefore(start))
-                .collect(Collectors.toList()));
+                // Obtener deudas pagadas del mes seleccionado
+                List<Deuda> deudasPagadasDelMes = deudaRepository.findByUsuarioIdAndEstadoAndFechaVencimientoBetween(
+                                usuario.getId(), Estado.PAGADA, start, end);
 
-        return deudas.stream()
-                .map(deudaMapper::toDTO)
-                .collect(Collectors.toList());
-    }
+                // Depuración
+                System.out.println("Deudas pendientes no vencidas del mes: " + deudasPendientesNoVencidasDelMes);
+                System.out.println("Deudas pendientes vencidas: " + deudasPendientesVencidas);
+                System.out.println("Deudas pagadas del mes: " + deudasPagadasDelMes);
 
-    @Transactional
-    public void marcarComoPagada(Long deudaId, String email) {
-        Usuario usuario = usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado."));
+                // Filtrar deudas vencidas que pertenecen a meses anteriores al mes seleccionado
+                List<Deuda> deudasPendientesVencidasMesesAnteriores = deudasPendientesVencidas.stream()
+                                .filter(deuda -> deuda.getFechaVencimiento().isBefore(start))
+                                .collect(Collectors.toList());
 
-        Deuda deuda = deudaRepository.findById(deudaId)
-                .orElseThrow(() -> new IllegalArgumentException("Deuda no encontrada."));
+                List<Deuda> todasDeudas = new ArrayList<>();
+                todasDeudas.addAll(deudasPendientesNoVencidasDelMes);
+                todasDeudas.addAll(deudasPendientesVencidasMesesAnteriores);
+                todasDeudas.addAll(deudasPagadasDelMes);
 
-        if (!deuda.getUsuario().getId().equals(usuario.getId())) {
-            throw new IllegalArgumentException("No autorizado.");
+                return todasDeudas.stream()
+                                .map(deudaMapper::toDTO)
+                                .collect(Collectors.toList());
         }
 
-        if (deuda.getEstado() == Estado.PAGADA) {
-            throw new IllegalArgumentException("La deuda ya está pagada.");
+        @Transactional
+        public void marcarComoPagada(Long deudaId, String email) {
+                Usuario usuario = usuarioRepository.findByEmail(email)
+                                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado."));
+
+                Deuda deuda = deudaRepository.findById(deudaId)
+                                .orElseThrow(() -> new IllegalArgumentException("Deuda no encontrada."));
+
+                if (!deuda.getUsuario().getId().equals(usuario.getId())) {
+                        throw new IllegalArgumentException("No autorizado.");
+                }
+
+                if (deuda.getEstado() == Estado.PAGADA) {
+                        throw new IllegalArgumentException("La deuda ya está pagada.");
+                }
+
+                deuda.setEstado(Estado.PAGADA);
+                deudaRepository.save(deuda);
         }
 
-        deuda.setEstado(Estado.PAGADA);
-        deudaRepository.save(deuda);
-    }
+        // public List<DeudaResponseDTO> alertarVencimientosHoy(String email) {
+        //         Usuario usuario = usuarioRepository.findByEmail(email)
+        //                         .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado."));
 
-    public List<DeudaResponseDTO> alertarVencimientosHoy(String email) {
-        Usuario usuario = usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado."));
+        //         LocalDate hoy = LocalDate.now();
+        //         List<Deuda> deudas = deudaRepository.findByUsuarioIdAndFechaVencimientoBetween(usuario.getId(), hoy,
+        //                         hoy);
 
-        LocalDate hoy = LocalDate.now();
-        List<Deuda> deudas = deudaRepository.findByUsuarioIdAndFechaVencimientoBetween(usuario.getId(), hoy, hoy);
+        //         List<DeudaResponseDTO> deudasResponse = deudas.stream()
+        //                         .map(deudaMapper::toDTO)
+        //                         .collect(Collectors.toList());
 
-        List<DeudaResponseDTO> deudasResponse = deudas.stream()
-                .map(deudaMapper::toDTO)
-                .collect(Collectors.toList());
+        //         deudas.forEach(deuda -> notificacionService.enviarAlerta(deudaMapper.toDTO(deuda), deuda.getUsuario()));
 
-        deudas.forEach(deuda -> notificacionService.enviarAlerta(deudaMapper.toDTO(deuda), deuda.getUsuario()));
+        //         return deudasResponse;
+        // }
 
-        return deudasResponse;
-    }
+        public List<DeudaResponseDTO> alertarVencimientosHoy(String email) {
+                Usuario usuario = usuarioRepository.findByEmail(email)
+                        .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado."));
+            
+                LocalDate hoy = LocalDate.now();
+                List<Deuda> deudas = deudaRepository.findByUsuarioIdAndFechaVencimientoBetween(usuario.getId(), hoy, hoy);
+            
+                return deudas.stream()
+                        .map(deudaMapper::toDTO)
+                        .collect(Collectors.toList());
+            }
+            
+
+        public List<DeudaResponseDTO> obtenerDeudasVencenHoy() {
+                LocalDate hoy = LocalDate.now();
+                List<Deuda> deudas = deudaRepository.findByFechaVencimientoAndEstado(hoy, Estado.PENDIENTE);
+                return deudas.stream()
+                                .map(deudaMapper::toDTO)
+                                .collect(Collectors.toList());
+        }
+
 }

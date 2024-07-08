@@ -1,5 +1,6 @@
 package com.paygrid.dockerized.repository;
 
+
 import com.paygrid.dockerized.model.entity.Prestamo;
 import org.springframework.data.jpa.repository.JpaRepository;
 
