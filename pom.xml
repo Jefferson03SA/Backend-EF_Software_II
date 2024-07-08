@@ -85,6 +85,7 @@
 	</dependencies>
 	<build>
 		<plugins>
+			<!-- Plugin para compilar el código con Java 21 -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
@@ -94,6 +95,7 @@
 					<target>21</target>
 				</configuration>
 			</plugin>
+			<!-- Plugin para empaquetar la aplicación Spring Boot -->
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
@@ -108,4 +110,5 @@
 			</plugin>
 		</plugins>
 	</build>
+	
 </project>
