@@ -25,13 +25,15 @@ public class UsuarioController {
     private final PasswordEncoder passwordEncoder;
 
     @PostMapping("/registro")
-    public ResponseEntity<UsuarioResponseDTO> registrarUsuario(@Valid @RequestBody UsuarioRequestDTO usuarioRequestDTO) {
+    public ResponseEntity<UsuarioResponseDTO> registrarUsuario(
+            @Valid @RequestBody UsuarioRequestDTO usuarioRequestDTO) {
         UsuarioResponseDTO usuarioResponseDTO = usuarioService.registrarUsuario(usuarioRequestDTO);
         return new ResponseEntity<>(usuarioResponseDTO, HttpStatus.CREATED);
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponseDTO> loginUsuario(HttpServletRequest request, @Valid @RequestBody LoginRequestDTO loginRequestDTO) {
+    public ResponseEntity<LoginResponseDTO> loginUsuario(HttpServletRequest request,
+            @Valid @RequestBody LoginRequestDTO loginRequestDTO) {
         Usuario usuario = usuarioService.obtenerUsuarioEntidadPorEmail(loginRequestDTO.getEmail());
         if (usuario != null && passwordEncoder.matches(loginRequestDTO.getPassword(), usuario.getPassword())) {
             try {
@@ -54,5 +56,10 @@ public class UsuarioController {
         } catch (ServletException e) {
             return new ResponseEntity<>("Error al cerrar sesión.", HttpStatus.UNAUTHORIZED);
         }
+    }
+
+    @GetMapping("/check-auth")
+    public ResponseEntity<Void> checkAuth() {
+        return ResponseEntity.ok().build();
     }
 }
