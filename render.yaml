@@ -6,14 +6,6 @@ databases:
 
 services:
   - type: web
-    name: whatsapp-bridge
-    region: oregon
-    plan: free
-    env: docker
-    dockerContext: ./whatsapp-bridge
-    dockerfilePath: ./whatsapp-bridge/Dockerfile
-  
-  - type: web
     name: backend-app
     region: oregon
     plan: free
