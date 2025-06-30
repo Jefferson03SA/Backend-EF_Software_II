@@ -62,4 +62,26 @@ public class UsuarioController {
     public ResponseEntity<Void> checkAuth() {
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping("/me")
+    public ResponseEntity<UsuarioResponseDTO> getUsuarioActual(HttpServletRequest request) {
+        String email = request.getUserPrincipal() != null ? request.getUserPrincipal().getName() : null;
+        if (email == null) {
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+        }
+        UsuarioResponseDTO usuarioResponseDTO = usuarioService.obtenerUsuarioPorEmail(email);
+        return new ResponseEntity<>(usuarioResponseDTO, HttpStatus.OK);
+    }
+
+    @GetMapping("/me/whatsapp")
+    public ResponseEntity<?> getNumeroWhatsAppUsuario(HttpServletRequest request) {
+        System.out.println("[DEBUG] Entrando a /usuarios/me/whatsapp");
+        String email = request.getUserPrincipal() != null ? request.getUserPrincipal().getName() : null;
+        if (email == null) {
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+        }
+        Usuario usuario = usuarioService.obtenerUsuarioEntidadPorEmail(email);
+        String phoneNumber = usuario.getPhoneNumber();
+        return ResponseEntity.ok().body(java.util.Collections.singletonMap("phoneNumber", phoneNumber));
+    }
 }

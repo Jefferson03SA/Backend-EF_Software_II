@@ -1,0 +1,67 @@
+services:
+  # Servicio de Base de Datos PostgreSQL
+  postgres-db:
+    image: postgres:15
+    container_name: paygrid-postgres
+    environment:
+      POSTGRES_DB: iisap_db
+      POSTGRES_USER: iis
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    # Healthcheck para asegurar que la BD esté lista para aceptar conexiones
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U iis -d iisap_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - paygrid-network
+
+  # Servicio del Bridge de WhatsApp (Node.js)
+  whatsapp-bridge:
+    build:
+      context: ./whatsapp-bridge
+      dockerfile: Dockerfile
+    container_name: paygrid-whatsapp-bridge
+    ports:
+      - "21465:21465"
+    networks:
+      - paygrid-network
+    # Es crucial persistir la sesión de WhatsApp para no tener que escanear el QR cada vez.
+    volumes:
+      - ./whatsapp-bridge/tokens:/usr/src/app/tokens
+
+  # Servicio del Backend (Spring Boot)
+  backend-app:
+    build: .
+    container_name: paygrid-backend
+    depends_on: # Ahora espera a que los servicios estén listos
+      postgres-db:
+        condition: service_healthy # Espera a que la BD esté saludable
+      whatsapp-bridge:
+        condition: service_started # Espera a que el bridge inicie
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_URL=jdbc:postgresql://postgres-db:5432/iisap_db
+      - DB_USERNAME=iis
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - WPPCONNECT_BASE_URL=http://whatsapp-bridge:21465/api
+      - DDL_AUTO=update # Cambiado a 'update' para crear tablas automáticamente
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_KEY=${AWS_SECRET_KEY}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+    networks:
+      - paygrid-network
+
+networks:
+  paygrid-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local

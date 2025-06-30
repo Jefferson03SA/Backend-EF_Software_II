@@ -6,8 +6,10 @@ import com.paygrid.dockerized.model.dto.DeudaResponseDTO;
 import com.paygrid.dockerized.model.entity.Deuda;
 import com.paygrid.dockerized.model.entity.Usuario;
 import com.paygrid.dockerized.model.enums.Estado;
+import com.paygrid.dockerized.model.enums.NotificationType;
 import com.paygrid.dockerized.repository.DeudaRepository;
 import com.paygrid.dockerized.repository.UsuarioRepository;
+import com.paygrid.dockerized.service.NotificacionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,8 +49,16 @@ public class DeudaService {
                 deuda.setEstado(Estado.PENDIENTE);
                 deuda = deudaRepository.save(deuda);
 
+                // Notificar al usuario por ambos medios (plataforma y WhatsApp)
+                String mensaje = "📋 Empresa: " + deuda.getEmpresa() + "\n💰 Monto: S/ " + deuda.getMonto() + "\n📅 Vence: " + deuda.getFechaVencimiento();
+                notificacionService.notificarUsuario(usuario, mensaje, NotificationType.GENERAL_NOTIFICATION);
+
                 // Enviar notificación si la deuda vence hoy
                 if (deuda.getFechaVencimiento().isEqual(LocalDate.now())) {
+                        String mensajeAlerta = "¡Atención! Tienes una deuda que vence hoy:\n" +
+                                        "📋 Empresa: " + deuda.getEmpresa() + "\n" +
+                                        "💰 Monto: S/ " + deuda.getMonto();
+                        notificacionService.notificarUsuario(usuario, mensajeAlerta, NotificationType.DUE_DATE_REMINDER);
                         notificacionService.enviarAlerta(deudaMapper.toDTO(deuda), usuario);
                 }
 
@@ -117,23 +127,6 @@ public class DeudaService {
                 deudaRepository.save(deuda);
         }
 
-        // public List<DeudaResponseDTO> alertarVencimientosHoy(String email) {
-        //         Usuario usuario = usuarioRepository.findByEmail(email)
-        //                         .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado."));
-
-        //         LocalDate hoy = LocalDate.now();
-        //         List<Deuda> deudas = deudaRepository.findByUsuarioIdAndFechaVencimientoBetween(usuario.getId(), hoy,
-        //                         hoy);
-
-        //         List<DeudaResponseDTO> deudasResponse = deudas.stream()
-        //                         .map(deudaMapper::toDTO)
-        //                         .collect(Collectors.toList());
-
-        //         deudas.forEach(deuda -> notificacionService.enviarAlerta(deudaMapper.toDTO(deuda), deuda.getUsuario()));
-
-        //         return deudasResponse;
-        // }
-
         public List<DeudaResponseDTO> alertarVencimientosHoy(String email) {
                 Usuario usuario = usuarioRepository.findByEmail(email)
                         .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado."));
@@ -153,6 +146,61 @@ public class DeudaService {
                 return deudas.stream()
                                 .map(deudaMapper::toDTO)
                                 .collect(Collectors.toList());
+        }
+
+        public DeudaResponseDTO obtenerDeudaPorId(Long deudaId, String email) {
+                Usuario usuario = usuarioRepository.findByEmail(email)
+                        .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado."));
+                Deuda deuda = deudaRepository.findById(deudaId)
+                        .orElseThrow(() -> new IllegalArgumentException("Deuda no encontrada."));
+                if (!deuda.getUsuario().getId().equals(usuario.getId())) {
+                    throw new IllegalArgumentException("No autorizado para ver esta deuda.");
+                }
+                return deudaMapper.toDTO(deuda);
+        }
+
+        @Transactional
+        public DeudaResponseDTO actualizarDeuda(Long deudaId, DeudaRequestDTO deudaRequestDTO, String email) {
+                Usuario usuario = usuarioRepository.findByEmail(email)
+                        .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado."));
+                Deuda deuda = deudaRepository.findById(deudaId)
+                        .orElseThrow(() -> new IllegalArgumentException("Deuda no encontrada."));
+                if (!deuda.getUsuario().getId().equals(usuario.getId())) {
+                    throw new IllegalArgumentException("No autorizado para modificar esta deuda.");
+                }
+                if (deudaRequestDTO.getNumeroDocumento() != null && !deudaRequestDTO.getNumeroDocumento().equals(deuda.getNumeroDocumento())) {
+                    throw new IllegalArgumentException("No se permite cambiar el número de documento de la deuda.");
+                }
+                // Actualiza solo los campos permitidos (parcial)
+                if (deudaRequestDTO.getEmpresa() != null) {
+                    deuda.setEmpresa(deudaRequestDTO.getEmpresa());
+                }
+                if (deudaRequestDTO.getMonto() != null) {
+                    deuda.setMonto(deudaRequestDTO.getMonto());
+                }
+                if (deudaRequestDTO.getFechaVencimiento() != null) {
+                    deuda.setFechaVencimiento(deudaRequestDTO.getFechaVencimiento());
+                }
+                // No se permite cambiar el estado ni el usuario ni el numeroDocumento
+                deuda = deudaRepository.save(deuda);
+                return deudaMapper.toDTO(deuda);
+        }
+
+        @Transactional
+        public void eliminarDeuda(Long deudaId, String email) {
+            Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado."));
+            Deuda deuda = deudaRepository.findById(deudaId)
+                .orElseThrow(() -> new IllegalArgumentException("Deuda no encontrada."));
+            if (!deuda.getUsuario().getId().equals(usuario.getId())) {
+                throw new IllegalArgumentException("No autorizado para eliminar esta deuda.");
+            }
+            deudaRepository.delete(deuda);
+        }
+
+        public List<Deuda> obtenerDeudasQueVencenManana() {
+                LocalDate manana = LocalDate.now().plusDays(1);
+                return deudaRepository.findByFechaVencimientoAndEstado(manana, Estado.PENDIENTE);
         }
 
 }

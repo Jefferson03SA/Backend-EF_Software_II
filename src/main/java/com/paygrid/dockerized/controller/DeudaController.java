@@ -1,6 +1,7 @@
 package com.paygrid.dockerized.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.paygrid.dockerized.model.dto.DeudaRequestDTO;
@@ -41,6 +42,27 @@ public class DeudaController {
     public List<DeudaResponseDTO> alertarVencimientosHoy(Principal principal) {
         String email = principal.getName();
         return deudaService.alertarVencimientosHoy(email);
+    }
+
+    @GetMapping("/{deudaId}")
+    public ResponseEntity<DeudaResponseDTO> obtenerDeudaPorId(@PathVariable Long deudaId, Principal principal) {
+        String email = principal.getName();
+        DeudaResponseDTO deuda = deudaService.obtenerDeudaPorId(deudaId, email);
+        return ResponseEntity.ok(deuda);
+    }
+
+    @PatchMapping("/{deudaId}")
+    public ResponseEntity<DeudaResponseDTO> actualizarDeuda(@PathVariable Long deudaId, @RequestBody DeudaRequestDTO deudaRequestDTO, Principal principal) {
+        String email = principal.getName();
+        DeudaResponseDTO deudaActualizada = deudaService.actualizarDeuda(deudaId, deudaRequestDTO, email);
+        return ResponseEntity.ok(deudaActualizada);
+    }
+
+    @DeleteMapping("/{deudaId}")
+    public ResponseEntity<Void> eliminarDeuda(@PathVariable Long deudaId, Principal principal) {
+        String email = principal.getName();
+        deudaService.eliminarDeuda(deudaId, email);
+        return ResponseEntity.noContent().build();
     }
 
 }

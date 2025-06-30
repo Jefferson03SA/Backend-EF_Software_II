@@ -3,16 +3,56 @@ package com.paygrid.dockerized.service;
 import com.paygrid.dockerized.model.dto.CronogramaPagoEmailDTO;
 import com.paygrid.dockerized.model.dto.DeudaResponseDTO;
 import com.paygrid.dockerized.model.entity.Usuario;
+import com.paygrid.dockerized.model.entity.UserNotification;
+import com.paygrid.dockerized.model.enums.NotificationType;
+import com.paygrid.dockerized.repository.UserNotificationRepository;
+import com.paygrid.dockerized.service.WhatsAppService;
+import com.paygrid.dockerized.model.dto.WhatsAppMessageDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
-
+import java.time.LocalDateTime;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 
 @Service
 public class NotificacionService {
+
+    @Autowired
+    private UserNotificationRepository userNotificationRepository;
+
+    @Autowired
+    private WhatsAppService whatsAppService;
+
+    /**
+     * Notifica al usuario: guarda en la base de datos y envía por WhatsApp.
+     */
+    public void notificarUsuario(Usuario usuario, String mensaje, NotificationType tipo) {
+        // 1. Guardar en la base de datos
+        UserNotification notification = new UserNotification();
+        notification.setUserId(usuario.getId().toString());
+        notification.setPhoneNumber(usuario.getPhoneNumber());
+        notification.setMessage(mensaje);
+        notification.setType(tipo);
+        notification.setSent(false);
+        notification.setCreatedAt(LocalDateTime.now());
+        notification.setUpdatedAt(LocalDateTime.now());
+        userNotificationRepository.save(notification);
+
+        // 2. Enviar por WhatsApp
+        if (usuario.getPhoneNumber() != null && !usuario.getPhoneNumber().isEmpty()) {
+            WhatsAppMessageDTO dto = new WhatsAppMessageDTO(usuario.getPhoneNumber(), mensaje);
+            try {
+                whatsAppService.sendMessage(dto);
+                notification.setSent(true);
+                notification.setSentAt(LocalDateTime.now());
+                userNotificationRepository.save(notification);
+            } catch (Exception e) {
+                // Manejar error de envío, pero la notificación ya está en la DB
+            }
+        }
+    }
 
     @Autowired
     private JavaMailSender mailSender;

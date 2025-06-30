@@ -1,33 +1,51 @@
-HELP.md
+# Archivos de compilación de Java y Maven
 target/
-!.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+build-number.properties
+.mvn/timing.properties
 
-### STS ###
-.apt_generated
+# Archivos de logs
+*.log
+logs/
+
+# Archivos de IDEs
+.idea/
+*.iml
+*.iws
 .classpath
-.factorypath
 .project
-.settings
+.settings/
 .springBeans
 .sts4-cache
-
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
-
-### NetBeans ###
-/nbproject/private/
+nbproject/private/
 /nbbuild/
 /dist/
 /nbdist/
 /.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-### VS Code ###
 .vscode/
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
+
+# Archivos de Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Archivos de sesión y tokens de WhatsApp
+whatsapp-bridge/tokens/
+
+# Archivo de variables de entorno (¡MUY IMPORTANTE!)
+.env
+
+# Archivos de Docker
+.dockerignore
+
+# Archivos de caché de Puppeteer
+whatsapp-bridge/.puppeteer_cache
