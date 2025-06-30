@@ -1,12 +1,18 @@
-services:
-  - type: psql
-    name: paygrid-postgres
+# Blueprint para desplegar en Render
+# Documentación: https://render.com/docs/blueprint-spec
+
+# 1. Definición de la Base de Datos
+# Las bases de datos tienen su propia sección de nivel superior.
+
+databases:
+  - name: paygrid-postgres # Nombre para referenciar desde otros servicios
     region: oregon
     plan: free
-    postgres:
-      version: 15
-    ipAllowList: []
 
+# 2. Definición de los Servicios Web
+# Aquí van tus aplicaciones que se ejecutan con Docker.
+
+services:
   - type: web
     name: whatsapp-bridge
     region: oregon
@@ -28,6 +34,7 @@ services:
     dockerfilePath: ./Dockerfile
     healthCheckPath: /actuator/health
     envVars:
+      # Las variables 'fromDatabase' apuntan al 'name' definido en la sección 'databases'
       - key: DB_URL
         fromDatabase:
           name: paygrid-postgres
@@ -44,6 +51,7 @@ services:
         value: http://whatsapp-bridge:21465/api
       - key: DDL_AUTO
         value: update
+      # --- Claves Secretas ---
       - key: AWS_ACCESS_KEY_ID
         sync: false
       - key: AWS_SECRET_KEY
