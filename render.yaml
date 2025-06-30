@@ -12,11 +12,9 @@ services:
     env: docker
     dockerContext: .
     dockerfilePath: ./Dockerfile
-    healthCheck:
-      path: /actuator/health
-      timeoutSeconds: 600
+    healthCheckPath: /actuator/health
     envVars:
-      - key: DB_URL # <-- CAMBIADO: Spring Boot prefiere una URL completa
+      - key: DB_URL
         fromDatabase:
           name: paygrid-postgres
           property: connectionString
@@ -29,7 +27,7 @@ services:
           name: paygrid-postgres
           property: password
       - key: WPPCONNECT_BASE_URL
-        value: http://whatsapp-bridge:21465 # <-- CORREGIDO: Render inyecta el puerto correcto automáticamente
+        value: http://whatsapp-bridge:21465
       - key: DDL_AUTO
         value: update
       - key: AWS_ACCESS_KEY_ID
@@ -41,13 +39,12 @@ services:
       - key: CORS_ALLOWED_ORIGINS
         sync: false
 
-  - type: web # <-- AÑADIDO: El servicio de WhatsApp que faltaba
+  - type: web
     name: whatsapp-bridge
     region: oregon
     plan: free
     env: node
-    rootDir: ./whatsapp-bridge # <-- Le dice a Render que trabaje en esta carpeta
-    buildCommmand: npm install
+    rootDir: ./whatsapp-bridge
+    buildCommand: npm install
     startCommand: node server.js
-    healthCheck:
-      path: /api/status # <-- Asumiendo que tienes una ruta de status, si no, elimínalo
+    healthCheckPath: /api/status
