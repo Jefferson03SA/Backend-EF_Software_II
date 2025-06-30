@@ -27,9 +27,7 @@ services:
     healthCheckPath: /actuator/health
     envVars:
       - key: DB_URL
-        fromDatabase:
-          name: paygrid-postgres
-          property: connectionString
+        value: jdbc:$(fromDatabase.paygrid-postgres.connectionString)
       - key: DB_USERNAME
         fromDatabase:
           name: paygrid-postgres
