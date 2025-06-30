@@ -1,17 +1,11 @@
-# Usa una imagen base oficial de OpenJDK 21
-FROM openjdk:21-jdk-slim
-
-# Argumento para la ruta del JAR
-ARG JAR_FILE=target/*.jar
-
-# Establece el directorio de trabajo dentro del contenedor
+FROM maven:3.9.6-eclipse-temurin-21-alpine AS build
 WORKDIR /app
+COPY pom.xml .
+COPY src ./src
+RUN mvn clean package -DskipTests
 
-# Copia el archivo JAR empaquetado al contenedor
-COPY ${JAR_FILE} app.jar
-
-# Expone el puerto en el que se ejecuta la aplicación
+FROM openjdk:21-jdk-slim
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
 EXPOSE 8080
-
-# Comando para ejecutar la aplicación
 ENTRYPOINT ["java","-jar","/app/app.jar"]
