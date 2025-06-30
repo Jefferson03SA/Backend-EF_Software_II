@@ -25,7 +25,7 @@ services:
     dockerContext: .
     dockerfilePath: ./Dockerfile
     healthCheckPath: /actuator/health
-    healthCheckTimeoutSeconds: 180
+    healthCheckTimeoutSeconds: 600
     httpPort: 8080
     envVars:
       - key: DB_HOST
