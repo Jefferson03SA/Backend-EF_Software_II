@@ -1,0 +1,54 @@
+services:
+  - type: psql
+    name: paygrid-postgres
+    region: oregon
+    plan: free
+    postgres:
+      version: 15
+    ipAllowList: []
+
+  - type: web
+    name: whatsapp-bridge
+    region: oregon
+    plan: free
+    env: docker
+    dockerContext: ./whatsapp-bridge
+    dockerfilePath: ./whatsapp-bridge/Dockerfile
+    disk:
+      name: whatsapp-tokens
+      mountPath: /usr/src/app/tokens
+      sizeGB: 1
+
+  - type: web
+    name: backend-app
+    region: oregon
+    plan: free
+    env: docker
+    dockerContext: .
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: DB_URL
+        fromDatabase:
+          name: paygrid-postgres
+          property: connectionString
+      - key: DB_USERNAME
+        fromDatabase:
+          name: paygrid-postgres
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: paygrid-postgres
+          property: password
+      - key: WPPCONNECT_BASE_URL
+        value: http://whatsapp-bridge:21465/api
+      - key: DDL_AUTO
+        value: update
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_KEY
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
