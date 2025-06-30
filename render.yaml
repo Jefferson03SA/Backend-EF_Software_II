@@ -1,5 +1,4 @@
 # Blueprint para desplegar en Render
-# Documentación: https://render.com/docs/blueprint-spec
 databases:
   - name: paygrid-postgres
     region: oregon
@@ -21,10 +20,9 @@ services:
     env: docker
     dockerContext: .
     dockerfilePath: ./Dockerfile
-    healthCheck: # <-- CORRECCIÓN: anidado aquí
-      path: /actuator/health # <-- CORRECCIÓN: ahora es 'path'
-      timeoutSeconds: 600 # <-- CORRECCIÓN: ahora es 'timeoutSeconds'
-    # La línea 'httpPort: 8080' se ha eliminado
+    healthCheck:
+      path: /actuator/health
+      timeoutSeconds: 600
     envVars:
       - key: DB_HOST
         fromDatabase:
