@@ -1,13 +1,10 @@
 # Blueprint para desplegar en Render
 # Documentación: https://render.com/docs/blueprint-spec
-
-# 1. Definición de la Base de Datos
 databases:
   - name: paygrid-postgres
     region: oregon
     plan: free
 
-# 2. Definición de los Servicios Web
 services:
   - type: web
     name: whatsapp-bridge
@@ -16,7 +13,7 @@ services:
     env: docker
     dockerContext: ./whatsapp-bridge
     dockerfilePath: ./whatsapp-bridge/Dockerfile
-
+  
   - type: web
     name: backend-app
     region: oregon
@@ -24,9 +21,10 @@ services:
     env: docker
     dockerContext: .
     dockerfilePath: ./Dockerfile
-    healthCheckPath: /actuator/health
-    healthCheckTimeoutSeconds: 600
-    httpPort: 8080
+    healthCheck: # <-- CORRECCIÓN: anidado aquí
+      path: /actuator/health # <-- CORRECCIÓN: ahora es 'path'
+      timeoutSeconds: 600 # <-- CORRECCIÓN: ahora es 'timeoutSeconds'
+    # La línea 'httpPort: 8080' se ha eliminado
     envVars:
       - key: DB_HOST
         fromDatabase:
