@@ -37,7 +37,7 @@ services:
       - key: DB_NAME
         fromDatabase:
           name: paygrid-postgres
-          property: databaseName
+          property: database
       - key: DB_USERNAME
         fromDatabase:
           name: paygrid-postgres
