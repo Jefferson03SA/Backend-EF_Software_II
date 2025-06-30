@@ -16,18 +16,10 @@ services:
       path: /actuator/health
       timeoutSeconds: 600
     envVars:
-      - key: DB_HOST
+      - key: DB_URL # <-- CAMBIADO: Spring Boot prefiere una URL completa
         fromDatabase:
           name: paygrid-postgres
-          property: host
-      - key: DB_PORT
-        fromDatabase:
-          name: paygrid-postgres
-          property: port
-      - key: DB_NAME
-        fromDatabase:
-          name: paygrid-postgres
-          property: database
+          property: connectionString
       - key: DB_USERNAME
         fromDatabase:
           name: paygrid-postgres
@@ -37,7 +29,7 @@ services:
           name: paygrid-postgres
           property: password
       - key: WPPCONNECT_BASE_URL
-        value: http://whatsapp-bridge:21465/api
+        value: http://whatsapp-bridge:21465 # <-- CORREGIDO: Render inyecta el puerto correcto automáticamente
       - key: DDL_AUTO
         value: update
       - key: AWS_ACCESS_KEY_ID
@@ -48,3 +40,14 @@ services:
         sync: false
       - key: CORS_ALLOWED_ORIGINS
         sync: false
+
+  - type: web # <-- AÑADIDO: El servicio de WhatsApp que faltaba
+    name: whatsapp-bridge
+    region: oregon
+    plan: free
+    env: node
+    rootDir: ./whatsapp-bridge # <-- Le dice a Render que trabaje en esta carpeta
+    buildCommmand: npm install
+    startCommand: node server.js
+    healthCheck:
+      path: /api/status # <-- Asumiendo que tienes una ruta de status, si no, elimínalo

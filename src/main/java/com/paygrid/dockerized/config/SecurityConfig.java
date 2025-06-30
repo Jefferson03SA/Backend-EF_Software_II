@@ -40,6 +40,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(authorize -> authorize
                 .requestMatchers("/usuarios/registro", "/usuarios/login").permitAll()
+                .requestMatchers("/deudas/**").permitAll()
                 .requestMatchers("/whatsapp/**").permitAll()
                 .requestMatchers("/usuarios/logout").authenticated()
                 .anyRequest().authenticated()
