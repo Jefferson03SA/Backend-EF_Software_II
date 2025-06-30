@@ -14,10 +14,18 @@ services:
     dockerfilePath: ./Dockerfile
     healthCheckPath: /actuator/health
     envVars:
-      - key: DB_URL
+      - key: DB_HOST
         fromDatabase:
           name: paygrid-postgres
-          property: connectionString
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: paygrid-postgres
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: paygrid-postgres
+          property: database
       - key: DB_USERNAME
         fromDatabase:
           name: paygrid-postgres
