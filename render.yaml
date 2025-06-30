@@ -25,6 +25,7 @@ services:
     dockerContext: .
     dockerfilePath: ./Dockerfile
     healthCheckPath: /actuator/health
+    healthCheckTimeoutSeconds: 180
     envVars:
       - key: DB_HOST
         fromDatabase:
